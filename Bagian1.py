@@ -1,25 +1,23 @@
 import psycopg2
 from psycopg2 import Error
 
-try:
-    # Connect to an existing database
-    connection = psycopg2.connect(user="postgres",
-                                  password="postgre",
-                                  host="127.0.0.1",
-                                  port="5432",
-                                  database="LSP")
+# Connect to an existing database
+try: 
+    conn = psycopg2.connect(user="postgres",
+                            password="postgre",
+                            host="127.0.0.1",
+                            port="5432",
+                            database="LSP")
 
     # Create a cursor to perform database operations
-    cursor = connection.cursor()
-    # Print PostgreSQL details
-    print("PostgreSQL server information")
-    print(connection.get_dsn_parameters(), "\n")
+    cursor = conn.cursor()
     # Executing a SQL query
     cursor.execute("SELECT version();")
     # Fetch result
     record = cursor.fetchone()
     print("You are connected to - ", record, "\n")
 
+    # Text to integer converter function
     def text2int(kata):
         help_dict = {
             'satu': 1,
@@ -36,38 +34,55 @@ try:
 
         kata_id = kata[0]
         kata_angka = kata[1]
-        sql = """ UPDATE bagian1 set angka = %s where id = %s"""
-    
+        sql = """UPDATE bagian1 set angka = %s where id = %s"""
+        
         for key, value in help_dict.items():
             if kata_angka == key:
                 cursor.execute(sql, (value, kata_id))
-                connection.commit()
+                # conn.commit()
 
+    # Get query result
+    cursor.execute("""SELECT * from bagian1""")
 
-    getAll = "select * from bagian1"
-    cursor.execute(getAll)
-    
-    records = cursor.fetchall()
-    for row in records:
+    # Fetches rows of a query result and return a list of tuples
+    for row in cursor.fetchall():
         text2int(row)
 
-    cursor.execute("ALTER TABLE bagian1 ALTER COLUMN angka TYPE integer USING (angka::integer)")
+    # Convert column angka's data type from varchar to integer
+    cursor.execute("""ALTER TABLE bagian1 ALTER COLUMN angka TYPE integer USING (angka::integer)""")
     
-    cursor.execute("SELECT * from bagian1 ORDER BY angka")
-    print(cursor.fetchall())
-    connection.commit()
+    # Sort column angka
+    sort = """SELECT * from bagian1 ORDER BY angka"""
+    cursor.execute(sort)
+    sorted = cursor.fetchall()
+    # conn.commit()
 
-    columns = []
-    rows = cursor.execute('select * from bagian1')
-    for row in rows:
-        columns.append(row['angka'])
-    print(columns)
+    # Identify column angka as odd/even and delete all odd numbers
+    print('Sorting secara ascending dan penentuan ganjil/genap')
+    for row in sorted:
+        if row[1] % 2 != 0:
+            num = 'ganjil'
+            cursor.execute("""DELETE from bagian1 where id = %s""", [row[0]])
+        else:
+            num = 'genap'
+        print('id: ', row[0])
+        print('angka: ', row[1])
+        print('jenis: ', num)
+        # conn.commit()
+    print('\n')
+    
+    # Print after odd numbers deleted
+    print('Setelah penghapusan bilangan ganjil')
+    cursor.execute(sort)
+    for row in cursor.fetchall():
+        print('id: ', row[0])
+        print('angka: ', row[1])
+        
 
 except (Exception, Error) as error:
     print("Error while connecting to PostgreSQL", error)
 finally:
-    if (connection):
+    if (conn):
         cursor.close()
-        connection.close()
+        conn.close()
         print("PostgreSQL connection is closed")
-
